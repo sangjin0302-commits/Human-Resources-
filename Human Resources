@@ -1,0 +1,51 @@
+function onEdit(e) {
+  var ss = e.source;
+  var sheet = ss.getActiveSheet();
+  var range = e.range;
+
+  // 1. 검색창(C2)이 수정되었을 때만 작동
+  if (range.getA1Notation() === "C2") {
+    var keyword = range.getValue().toString();
+    
+    // 이전 검색 결과 삭제 (8행부터 아래로 넉넉히 삭제)
+    var lastRow = sheet.getLastRow();
+    if (lastRow >= 8) {
+      sheet.getRange(8, 1, lastRow, 8).clearContent();
+    }
+
+    if (keyword === "") return; // 검색어가 비어있으면 종료
+
+    // 2. 검색 대상 시트 목록 (쿼리 함수에 있던 시트들)
+    var targetSheetNames = [
+      'Gov', 'Public Com', 'Private Com', 'NGO', 
+      'Press', 'InstitutesUniv', 'ETC'
+    ];
+    
+    var allResults = [];
+
+    // 3. 각 시트를 돌면서 데이터 수집
+    targetSheetNames.forEach(function(name) {
+      var tSheet = ss.getSheetByName(name);
+      if (!tSheet) return; // 시트가 없으면 건너뜀
+
+      // L3:S 범위의 데이터를 가져옴 (L=12번째 열, S=19번째 열)
+      var data = tSheet.getRange("L3:S" + tSheet.getLastRow()).getValues();
+
+      // 필터링 로직: P열(L:S 범위 중 5번째 열, index 4)에 키워드 포함 여부 확인
+      var filtered = data.filter(function(row) {
+        var pValue = row[4] ? row[4].toString() : ""; // P열 값
+        return pValue.indexOf(keyword) !== -1 && row[0] !== ""; // Col1이 비어있지 않은 조건 추가
+      });
+
+      // 결과 배열에 추가
+      allResults = allResults.concat(filtered);
+    });
+
+    // 4. 결과 출력
+    if (allResults.length > 0) {
+      sheet.getRange(8, 1, allResults.length, 8).setValues(allResults);
+    } else {
+      sheet.getRange("A8").setValue("N/A"); // 결과 없을 때
+    }
+  }
+}
